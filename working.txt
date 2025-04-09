@@ -1,0 +1,59 @@
+
+import streamlit as st
+import cv2
+import pytesseract
+from PIL import Image
+import numpy as np
+
+# Streamlit UI setup
+st.title("Doctor's Prescription Text Extractor")
+st.write("Upload an image of a prescription to extract the text.")
+
+# Upload image
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    # Convert the file to an opencv image
+    image = Image.open(uploaded_file).convert("RGB")  # Ensure image is RGB
+    img_array = np.array(image)
+
+    # Display the uploaded image
+    st.image(image, caption='Uploaded Prescription', use_column_width=True)
+
+    # Ensure correct number of channels
+    if len(img_array.shape) == 2:
+        img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
+    elif img_array.shape[2] == 4:
+        img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGR)
+
+    # Convert image to grayscale
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    
+    # Optional preprocessing
+    gray = cv2.medianBlur(gray, 3)
+    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+
+    # Perform OCR on the image with custom config
+    custom_config = r'--oem 3 --psm 6'
+    extracted_text = pytesseract.image_to_string(gray, config=custom_config)
+
+    # Display the extracted text
+    st.subheader("Extracted Text")
+    st.text_area("Text Output", extracted_text, height=300)
+
+    # Option to download the extracted text
+    st.download_button(
+        label="Download Extracted Text",
+        data=extracted_text,
+        file_name="extracted_prescription.txt",
+        mime="text/plain"
+    )
+
+# Footer
+st.write("Built with Streamlit and Tesseract OCR")
+
+# Ensure Tesseract is correctly installed
+# For Windows, add this to the path: C:\Program Files\Tesseract-OCR\tesseract.exe
+# For Linux/Mac, make sure tesseract is installed via: sudo apt-get install tesseract-ocr
+
+# Install dependencies: pip install streamlit opencv-python pillow pytesseract
